@@ -1,0 +1,8 @@
+[requires]
+OpenSSL/1.1.1d@conan/stable
+
+[generators]
+visual_studio
+
+[options]
+ OpenSSL:no_zlib=True

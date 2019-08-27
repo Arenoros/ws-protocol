@@ -2,4 +2,10 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/.vs/Project1
+.vs
+Debug
+*.lock
+*.user
+graph_info.json
+conaninfo.txt
+conanbuildinfo.txt

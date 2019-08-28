@@ -125,14 +125,15 @@
   <ItemGroup>
     <ClCompile Include="sha1.cpp" />
     <ClCompile Include="Source.cpp" />
-    <ClCompile Include="ws_client.cpp" />
+    <ClCompile Include="ws_connect.cpp" />
     <ClCompile Include="ws_frame.cpp" />
     <ClCompile Include="ws_server.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="platform_conf.h" />
     <ClInclude Include="sha1.h" />
-    <ClInclude Include="ws_client.h" />
+    <ClInclude Include="tcp_socket.h" />
+    <ClInclude Include="ws_connect.h" />
     <ClInclude Include="ws_frame.h" />
     <ClInclude Include="ws_server.h" />
   </ItemGroup>

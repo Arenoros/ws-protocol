@@ -24,10 +24,10 @@
     <ClCompile Include="ws_server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ws_client.cpp">
+    <ClCompile Include="ws_frame.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ws_frame.cpp">
+    <ClCompile Include="ws_connect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -41,10 +41,13 @@
     <ClInclude Include="ws_server.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ws_client.h">
+    <ClInclude Include="ws_frame.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ws_frame.h">
+    <ClInclude Include="ws_connect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tcp_socket.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

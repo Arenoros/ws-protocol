@@ -36,54 +36,66 @@
 #    include <fcntl.h>
 typedef int SOCKET;
 #endif
+
 typedef int error_code;
+namespace mplc {
 
-inline bool InitializeSockets() {
+    inline bool InitializeSockets() {
 #if PLATFORM == PLATFORM_WINDOWS
-    WSADATA WsaData;
-    return WSAStartup(MAKEWORD(2, 2), &WsaData) == NO_ERROR;
+        WSADATA WsaData;
+        return WSAStartup(MAKEWORD(2, 2), &WsaData) == NO_ERROR;
 #else
-    return true;
+        return true;
 #endif
-}
-
-inline void ShutdownSockets() {
-#if PLATFORM == PLATFORM_WINDOWS
-    WSACleanup();
-#endif
-}
-inline error_code GetSockError() {
-#if PLATFORM == PLATFORM_WINDOWS
-    return WSAGetLastError();
-#else
-    return errno;
-#endif
-}
-
-inline bool SockIsOK(SOCKET sock) { return sock != INVALID_SOCKET; }
-inline int CloseSock(SOCKET sock) {
-#if PLATFORM == PLATFORM_WINDOWS
-    return closesocket(sock);
-#else
-#    if defined(LINUX)
-    shutdown(sock, 2);
-#    endif
-    close(sock);
-#endif
-}
-inline void SetNoBlockSock(SOCKET sock) {
-#if PLATFORM != PLATFORM_WINDOWS
-    int flags = fcntl(sock, F_GETFL);
-    if(flags == -1) {
-        PRINT2("%ld: Error open TCP socket (%d)!", RGetTime_ms(), RGetLastError());
-        CR;
     }
-    flags = flags | O_NONBLOCK;
-    fcntl(sock, F_SETFL, flags);
-#else
-    u_long on_sock = 1;
-    ioctlsocket(sock, FIONBIO, &on_sock);
-#endif
-}
 
-typedef int error_code;
+    inline void ShutdownSockets() {
+#if PLATFORM == PLATFORM_WINDOWS
+        WSACleanup();
+#endif
+    }
+    inline error_code GetSockError(SOCKET s) {
+        int error = 0;
+        int len = sizeof(error);
+        int ret = getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&error, &len);
+        if(ret != 0) return ret;
+        return error;
+    }
+    inline error_code GetLastSockError() {
+#if PLATFORM == PLATFORM_WINDOWS
+        return WSAGetLastError();
+#else
+        return errno;
+#endif
+    }
+
+    inline bool IsValidSock(SOCKET sock) { return sock != INVALID_SOCKET; }
+    inline error_code CloseSock(SOCKET sock) {
+#if PLATFORM == PLATFORM_WINDOWS
+        return closesocket(sock);
+#else
+#    if defined(SHUT_RDWR)
+        if(shutdown(sock, SHUT_RDWR) == -1)
+            return GetLastSockError();
+#    endif
+        if(close(sock) == -1) return GetLastSockError();
+        return 0;
+#endif
+    }
+    inline error_code SetNoBlockSock(SOCKET sock) {
+#if PLATFORM != PLATFORM_WINDOWS
+        int flags = fcntl(sock, F_GETFL);
+        if(flags == -1) {
+            PRINT2("%ld: Error open TCP socket (%d)!", RGetTime_ms(), RGetLastError());
+            CR;
+        }
+        flags = flags | O_NONBLOCK;
+        if(fcntl(sock, F_SETFL, flags) == -1)
+            return GetLastSockError();
+        return 0;
+#else
+        u_long on_sock = 1;
+        return ioctlsocket(sock, FIONBIO, &on_sock);
+#endif
+    }
+}  // namespace mplc

@@ -17,7 +17,7 @@ accompanying LICENSE file.
 #include <cstdint>
 #include <Winsock2.h>
 
-namespace my {
+namespace mplc {
     void to_base64(const uint8_t* data, size_t data_size, size_t b64_size, char* out) {
         static const char encoding_table[64] = {
 
@@ -75,8 +75,7 @@ namespace my {
 
     // circular left bit rotation.  MSB wraps around to LSB
     uint32_t SHA1::lrot(uint32_t x, int bits) { return (x << bits) | (x >> (32 - bits)); };
-    void SHA1::storeBigEndianUint32(uint8_t* byte, uint32_t num)
-    {
+    void SHA1::storeBigEndianUint32(uint8_t* byte, uint32_t num) {
         assert(byte);
         byte[0] = (uint8_t)(num >> 24);
         byte[1] = (uint8_t)(num >> 16);
@@ -84,7 +83,7 @@ namespace my {
         byte[3] = (uint8_t)num;
     }
     // Constructor *******************************************************
-    SHA1::SHA1() : bytes{}{
+    SHA1::SHA1(): bytes{} {
         // make sure that the data type is the right size
         assert(sizeof(uint32_t) * 5 == 20);
 
@@ -209,16 +208,16 @@ namespace my {
         storeBigEndianUint32(footer + zero_count, totalBitsH);
         storeBigEndianUint32(footer + zero_count + 4, totalBitsL);
         /*uint32_t* pFooter = (uint32_t*)(footer + zero_count);
-        *pFooter++ = htonl(totalBitsH);
-        *pFooter = htonl(totalBitsL);*/
+         *pFooter++ = htonl(totalBitsH);
+         *pFooter = htonl(totalBitsL);*/
         // finish the final block
         addBytes((char*)footer, zero_count + 8);
         // allocate memory for the digest bytes
         // copy the digest bytes
-        //uint32_t* p_data = (uint32_t*)data;
+        // uint32_t* p_data = (uint32_t*)data;
         for(int i = 0; i < 5; ++i) {
             storeBigEndianUint32(&data[i * 4], Hn[i]);
             //*p_data = htonl(Hn[i]);
         }
     }
-}  // namespace my
+}  // namespace mplc

@@ -12,7 +12,8 @@ accompanying LICENSE file.
 #include <cstdint>
 #include <array>
 
-namespace my {
+namespace mplc {
+
     class SHA1 {
         uint32_t Hn[5];
         uint8_t bytes[64];
@@ -23,7 +24,7 @@ namespace my {
     public:
         SHA1();
         ~SHA1();
-        static void  make(const std::string& str, uint8_t* out);
+        static void make(const std::string& str, uint8_t* out);
         void addBytes(const char* data, int num);
         void getDigest(uint8_t* data);
         // utility methods
@@ -58,6 +59,6 @@ namespace my {
         return *reinterpret_cast<T*>(&decoded_data);
     }
 
-}  // namespace my
+}  // namespace mplc
 
 #endif

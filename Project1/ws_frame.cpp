@@ -24,6 +24,12 @@ namespace mplc {
         _buf_pos = 0;
         return _recv_size = sock.Recv(_buf, _buf_size);
     }
+    int WSFrame::map_on(uint8_t* buf, int size) {
+        _buf_pos = 0;
+        _recv_size = size;
+        _buf = buf;
+        return _recv_size;
+    }
 
     int WSFrame::send_to(const TcpSocket& sock) {
         uint8_t meta_buf[2 + sizeof(payload_len) + sizeof(mask)];

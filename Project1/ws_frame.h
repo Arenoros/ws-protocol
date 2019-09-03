@@ -24,6 +24,8 @@ namespace mplc {
     struct WSFrame {
         enum TOpcode { Continue = 0x0, Text = 0x1, Binary = 0x2, Ping = 0x9, Pong = 0x10 };
         WSFrame(uint8_t* buf, int size);
+        WSFrame() {}
+        int map_on(uint8_t* buf, int size);
         void decode();
         void encode();
         int load_from(const TcpSocket& sock);

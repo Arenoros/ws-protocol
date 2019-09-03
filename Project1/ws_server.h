@@ -8,10 +8,10 @@
 
 namespace mplc {
     template<class TCon>
-    class Server {
+    class TcpServer {
         typedef TcpSocket SockType;
-        typedef std::list<TCon*> ConLst;
-        typedef typename std::list<TCon*>::const_iterator con_iterator;
+        typedef std::list<SockType> ConLst;
+        typedef typename std::list<SockType>::iterator con_iterator;
 
     public:
         enum StatusType { NO_INIT, ERR, WAIT, LISTEN };
@@ -21,7 +21,8 @@ namespace mplc {
             status = NO_INIT;
             sock.Close();
             for(con_iterator it = connections.begin(); it != connections.end(); ++it) {
-                delete *it;
+                SockType& con = *it;
+                con.Close();
             }
             connections.clear();
             FD_ZERO(&read_set);
@@ -75,16 +76,19 @@ namespace mplc {
             }
             return 0;
         }
-        Server() { Disconnect(); }
-        Server(uint16_t port, const char* intface = nullptr): status(NO_INIT) {
+        TcpServer() { Disconnect(); }
+        TcpServer(uint16_t port, const char* intface = nullptr): status(NO_INIT) {
             Disconnect();
             Bind(port, intface);
         }
-
+        ~TcpServer() { Disconnect(); }
+        virtual void OnConnected(TCon& connect) {
+            
+        }
     private:
-        void AddToSet(const SockType& sock, fd_set& set) { FD_SET(sock.raw(), &set); }
-        void RemFromSet(const SockType& sock, fd_set& set) { FD_CLR(sock.raw(), &set); }
-        bool isContains(const SockType& sock, fd_set& set) { return FD_ISSET(sock.raw(), &set); }
+        static void AddToSet(const SockType& sock, fd_set& set) { FD_SET(sock.raw(), &set); }
+        static void RemFromSet(const SockType& sock, fd_set& set) { FD_CLR(sock.raw(), &set); }
+        static bool isContains(const SockType& sock, fd_set& set) { return FD_ISSET(sock.raw(), &set); }
         void Accept() {
             struct sockaddr nsi;
             int nsi_sz = sizeof(nsi);
@@ -92,8 +96,9 @@ namespace mplc {
             if(ns.isValid() && GetLastSockError() != EAGAIN) {
                 AddToSet(ns, read_set);
                 AddToSet(ns, write_set);
-                connections.push_back(new TCon(ns));
+                connections.push_back(new TCon(ns, nsi));
                 if(max < ns.raw()) max = ns.raw();
+                OnConnected(*connections.back());
             }
         }
 
@@ -101,21 +106,22 @@ namespace mplc {
             if(max != INVALID_SOCKET) return max;
             max = sock.raw();
             for(con_iterator it = connections.begin(); it != connections.end(); ++it) {
-                const SockType& sock = **it;
+                const SockType& sock = *it;
                 if(sock.raw() > max) max = sock.raw();
             }
         }
         void DeleteConnection(con_iterator it) {
             if(it == connections.end()) return;
-            if(*it == nullptr) {
+            TCon* con = *it;
+            if(con == nullptr) {
                 connections.erase(it);
                 return;
             }
-            const TcpSocket& s = **it;
+            con->Disconnect();
+            const SockType& s = *con;
             if(s.raw() == max) { max = INVALID_SOCKET; }
             RemFromSet(s, read_set);
             RemFromSet(s, write_set);
-            delete *it;
             connections.erase(it);
         }
 
@@ -133,12 +139,13 @@ namespace mplc {
         fd_set write_set;
     };
 
-    class WSServer {
-        sockaddr_in addr;
-        std::list<std::unique_ptr<WSConnect>> connections;
+    class WSServer : public TcpServer<WSConnect> {
+        /*sockaddr_in addr;
+        std::list<std::unique_ptr<WSConnect>> connections;*/
 
     public:
+        void OnConnected(WSConnect& connect) override;
         WSServer(uint16_t port, const char* ip = nullptr);
-        int Run();
+        //int Run();
     };
 }  // namespace mplc

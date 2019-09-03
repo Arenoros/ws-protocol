@@ -31,7 +31,7 @@ int main() {
     mplc::InitializeSockets();
     assert(test_Accept());
     mplc::WSServer server(4444);
-    server.Run();
+    server.Start();
     WSACleanup();
     return 0;
 }

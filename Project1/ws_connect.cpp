@@ -12,13 +12,12 @@ namespace mplc {
         printf("Headers: %s\n", header.c_str());
 
         ParsHeaders(header);
-        std::string resp = GenerateHandshake();
-        if(sock.Send(resp.c_str(), resp.size()) == -1)
-            return OnError(sock.GetError());
+        //std::string resp = GenerateHandshake();
+        /*if(sock.Send(resp.c_str(), resp.size()) == -1) return OnError(sock.GetError());
 
-        printf("Response: %s\n", resp.c_str());
+        printf("Response: %s\n", resp.c_str());*/
 
-        uint8_t buf[1440];
+        uint8_t buf[MTU];
         WSFrame::TOpcode prev = WSFrame::Continue;
         WSFrame frame(buf, sizeof(buf));
         while(!stop) {
@@ -30,31 +29,81 @@ namespace mplc {
         }
     }
 
-    WSConnect::WSConnect(TcpSocket sock, sockaddr_in addr)
-        : sock(sock), addr(addr), stop(false), th(&WSConnect::worker, this), ec(0) {
-        printf("Connected: %s:%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+    WSConnect::WSConnect(TcpSocket& sock, sockaddr_in addr)
+        : sock(sock), addr(addr), stop(false),/* th(&WSConnect::worker, this),*/ state(Handshake),
+          ec(0) {
     }
 
-    std::string WSConnect::GenerateHandshake() {
+    void WSConnect::GenerateHandshake() {
         std::string Key = headers["Sec-WebSocket-Key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
         uint8_t hash[20] = {0};
         SHA1::make(Key, hash);
         Key = to_base64(hash);
         // clang-format off
-    std::string handshake =
-            headers["HTTP"] + " 101 Web Socket Protocol Handshake\r\n"
-            "Upgrade: WebSocket\r\n"
-            "Connection: Upgrade\r\n"
-            "Sec-WebSocket-Accept: " + Key + "\r\n"
-            "WebSocket-Origin: http://" + headers["Host"] + "\r\n"
-            "WebSocket-Location: ws://" + headers["Host"] + headers["GET"] + "\r\n\r\n";
+        std::string handshake =
+                headers["HTTP"] + " 101 Web Socket Protocol Handshake\r\n"
+                "Upgrade: WebSocket\r\n"
+                "Connection: Upgrade\r\n"
+                "Sec-WebSocket-Accept: " + Key + "\r\n"
+                "WebSocket-Origin: http://" + headers["Host"] + "\r\n"
+                "WebSocket-Location: ws://" + headers["Host"] + headers["GET"] + "\r\n\r\n";
         // clang-format on
-        return handshake;
+        out_buf.insert(out_buf.end(), handshake.begin(), handshake.end());
     }
 
-    void WSConnect::Disconnect() {}
+    void WSConnect::Disconnect() {
+        OnDiconect();
+        sock.Close();
+        stop = true;
+    }
+    int WSConnect::Read() {
+        uint8_t buf[MTU];
+        int n = sock.Recv(buf, sizeof(buf));
+        if(n == -1) {
+            OnError(sock.GetError());
+            return n;
+        }
+        switch(state) {
+        case Handshake:
+            OnHttpHeader((char*)buf, n);
+            break;
+        case Established: {
+            WSFrame frame;
+            frame.map_on(buf, n);
+            prev = OnNewFrame(frame, prev);
+        } break;
+        case Closed:
+        case Connected:
+            break;
+        }
+        return n;
+    }
+    int WSConnect::Write() {
+        if(out_buf.empty()) return 0;
+        int send = sock.Send(&out_buf[0], std::min(out_buf.size(), MTU));
+        if(send == -1) {
+            OnError(sock.GetError());
+            Disconnect();
+            return -1;
+        }
+        out_buf.erase(out_buf.begin(), out_buf.begin()+send);
+        return send;
+    }
+
+    void WSConnect::OnHttpHeader(char* data, int size) {
+        handshake.append(data, size);
+        size_t pos = size + 3 > handshake.size() ? 0 : handshake.size() - size - 3;
+        if((pos = handshake.find("\r\n\r\n", pos)) != std::string::npos) {
+            handshake.resize(pos + 2);
+            ParsHeaders(handshake);
+            GenerateHandshake();
+            handshake.resize(0);
+            state = Established;
+        }
+        if(handshake.size() > 4 * MTU) { Disconnect(); }
+    }
     error_code WSConnect::ReadHttpHeader(std::string& http) {
-        char buf[1440];
+        char buf[MTU];
         int n = 0;
         while((n = sock.Recv(buf, sizeof(buf))) > 0) {
             size_t pos = http.size();
@@ -89,7 +138,9 @@ namespace mplc {
         frame.opcode = WSFrame::Pong;
         frame.send_to(sock);
     }
-    void WSConnect::OnDiconect() {}
+    void WSConnect::OnDiconect() {
+        printf("OnDiconect: %d\n", ec);
+    }
     void WSConnect::OnText(std::string& payload) {
         print_text(payload);
         payload.clear();
@@ -99,7 +150,9 @@ namespace mplc {
         payload.clear();
     }
 
-    void WSConnect::OnError(error_code ec) {}
+    void WSConnect::OnError(error_code ec) {
+        printf("OnError: %d\n", ec);
+    }
     WSFrame::TOpcode WSConnect::OnNewFrame(WSFrame& frame, WSFrame::TOpcode prev) {
         while(frame.has_frame()) {
             frame.next();
@@ -124,8 +177,8 @@ namespace mplc {
         return prev;
     }
     WSConnect::~WSConnect() {
-        sock.Close();
-        stop = true;
-        th.join();
+        Disconnect();
+        
+        //th.join();
     }
 }  // namespace mplc

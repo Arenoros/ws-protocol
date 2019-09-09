@@ -14,6 +14,14 @@ inline void print_bin(const std::vector<uint8_t>& data) {
     }
     printf("\n");
 }
+inline void print_bin(const uint8_t* data, int size) {
+    printf("Binary: \n\t");
+    for(size_t i = 0; i < size; ++i) {
+        printf("0x%02x ", data[i]);
+        if(i + 1 % 16 == 0) printf("\n\t");
+    }
+    printf("\n");
+}
 inline void print_text(const std::string& data) {
     printf("Text: \n");
     printf("\t%s\n", data.c_str());
@@ -24,13 +32,17 @@ namespace mplc {
     struct WSFrame {
         enum TOpcode { Continue = 0x0, Text = 0x1, Binary = 0x2, Ping = 0x9, Pong = 0x10 };
         WSFrame(uint8_t* buf, int size);
-        WSFrame() {}
+        WSFrame()
+            : fin(0), rsv(0), opcode(0), has_mask(0), short_len(0), _mask(0), head_len(0),
+              payload_len(0), len(0), pos(0), payload(nullptr), _buf(nullptr), _buf_size(0),
+              _recv_size(0), _buf_pos(0) {}
+
         int map_on(uint8_t* buf, int size);
         void decode();
         void encode();
         int load_from(const TcpSocket& sock);
-
-        int send_to(const TcpSocket& sock);
+        int load(int size);
+        int send_to(TcpSocket& sock) const;
         bool has_frame() const;
         void next();
         // ws frame headers
@@ -44,15 +56,14 @@ namespace mplc {
             uint32_t _mask;
         };
         //-------
-        uint8_t head_len; // size of frame header
-        uint64_t payload_len; // full size payload data
-        uint64_t len,  // Size of payload data in buffer for current frame
-            pos;       // Position relate of payload data
-        const uint8_t* payload; // pointer to start payload data in buffer for current frame
-        
+        uint8_t head_len;        // size of frame header
+        uint64_t payload_len;    // full size payload data
+        uint64_t len,            // Size of payload data in buffer for current frame
+            pos;                 // Position relate of payload data
+        const uint8_t* payload;  // pointer to start payload data in buffer for current frame
 
     private:
-        uint8_t* _buf; // pointer to start buffer
+        uint8_t* _buf;  // pointer to start buffer
         int _buf_size,
             _recv_size,  // Size of date read from socket
             _buf_pos;    // Position to end in buffer for current frame

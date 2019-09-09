@@ -2,12 +2,12 @@
 
 namespace mplc {
 
-    WSServer::WSServer(uint16_t port, const char* ip) : TcpServer(port, ip) {
+    WSServer::WSServer(uint16_t port, const char* ip): TcpServer(port, ip) {
         /*addr.sin_addr.s_addr = ip ? inet_addr(ip) : INADDR_ANY;
         addr.sin_family = AF_INET;
         addr.sin_port = htons(port);*/
     }
-    //int WSServer::Run() {
+    // int WSServer::Run() {
     //    SOCKET server = socket(AF_INET, SOCK_STREAM, 0);
     //    if(bind(server, (sockaddr*)&addr, sizeof(sockaddr)) != 0) {
     //        printf("bind error: %d\n", WSAGetLastError());
@@ -29,8 +29,9 @@ namespace mplc {
     //    }
     //    return 0;
     //}
-    void WSServer::OnConnected(WSConnect& connect) {
-        printf("Connected: %s:%d\n", inet_ntoa(connect.addr.sin_addr), ntohs(connect.addr.sin_port));
+    void WSServer::OnConnected(TcpSocket& connect, sockaddr_in nsi) {
+        connect.SetConnection<WSConnect>(nsi);
+        printf("Connected: %s:%d\n", inet_ntoa(nsi.sin_addr), ntohs(nsi.sin_port));
     }
 
 }  // namespace mplc

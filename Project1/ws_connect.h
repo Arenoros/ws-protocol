@@ -8,15 +8,8 @@
 #include "ws_frame.h"
 #include "tcp_socket.h"
 
-#define MAX_TRANSFER_UNIT 1440
 
 namespace mplc {
-    struct BaseConnection {
-        static const size_t MTU = MAX_TRANSFER_UNIT;
-        virtual void Disconnect() = 0;
-        virtual int Read() = 0;
-        virtual int Write() = 0;
-    };
 
     class WSConnect : BaseConnection {
         friend class WSServer;
@@ -29,9 +22,9 @@ namespace mplc {
         enum Status { Closed, Connected, Handshake, Established };
         Status state;
         void worker();
-       
-        std::vector<uint8_t> out_buf;
-        std::vector<uint8_t> in_buf;
+        uint8_t buf[MTU];
+        WSFrame frame;
+        //std::vector<uint8_t> in_buf;
     protected:
         
         error_code ec;
@@ -42,19 +35,29 @@ namespace mplc {
         error_code ReadHttpHeader(std::string& http);
         
     public:
+        const TcpSocket& Socket() const override { return sock; }
         WSConnect(TcpSocket& sock, sockaddr_in addr);
         int Read() override;
-        int Write() override;
+        //int Write() override;
         void Disconnect() override;
         virtual void GenerateHandshake();
         virtual void ParsHeaders(const std::string& header);
         virtual void Pong(WSFrame& frame);
         virtual void OnDiconect();
-        virtual void OnText(std::string& payload);
-        virtual void OnBinary(std::vector<uint8_t>& payload);
+        virtual void OnText(const char* payload, int size, bool fin);
+        virtual void OnBinary(const uint8_t* payload, int size, bool fin);
         virtual void OnPing(WSFrame& frame);
+        virtual void OnPong(WSFrame& frame);
         virtual void OnError(error_code ec);
-        virtual WSFrame::TOpcode OnNewFrame(WSFrame& frame, WSFrame::TOpcode prev);
+        virtual void NewPayloadPart();
+        void SendText(const std::string& data, bool fin) const;
+        void SendBinary(const uint8_t* payload, int size, bool fin) const;
+        void SendPing() const;
+        virtual void NewFrame();
         virtual ~WSConnect();
+    };
+
+    class WSStream {
+        
     };
 }  // namespace mplc

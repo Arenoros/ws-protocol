@@ -80,7 +80,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>E:\Workspace\MS4\Main\Source\MasterPLC\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PreprocessorDefinitions>NOMINMAX; _MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>MPLC_WS_API_EXPORTS;NOMINMAX; _MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -101,7 +101,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>E:\Workspace\MS4\Main\Source\MasterPLC\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PreprocessorDefinitions>NOMINMAX; _MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>MPLC_WS_API_EXPORTS;NOMINMAX; _MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -130,8 +130,10 @@
     <ClCompile Include="ws_server.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="connections_pool.h" />
     <ClInclude Include="platform_conf.h" />
     <ClInclude Include="sha1.h" />
+    <ClInclude Include="tcp_server.h" />
     <ClInclude Include="tcp_socket.h" />
     <ClInclude Include="ws_connect.h" />
     <ClInclude Include="ws_frame.h" />

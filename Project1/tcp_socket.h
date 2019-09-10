@@ -1,18 +1,16 @@
 #pragma once
+#include <vector>
+#include <algorithm>
 #include "platform_conf.h"
-#include <cstdint>
-#include <thread>
-#include <mutex>
 
-#define MAX_TRANSFER_UNIT 1440
+#define MAX_TRANSFER_UNIT 1350
 
 namespace mplc {
     struct BaseConnection {
-        static const size_t MTU = MAX_TRANSFER_UNIT;
-        virtual void Disconnect() = 0;
+        virtual void OnDisconnect() = 0;
         virtual int Read() = 0;
-        //virtual int Write() = 0;
-        virtual const TcpSocket& Socket() const = 0;
+        // virtual int Write() = 0;
+        // virtual const TcpSocket& Socket() const = 0;
     };
 
     class TcpSocket {
@@ -21,9 +19,12 @@ namespace mplc {
         error_code ec;
         void SetError() { ec = GetSockError(sock_fd); }
         std::vector<uint8_t> buf;
-        std::mutex buf_mtx;
-        BaseConnection* con;
+        mutex buf_mtx;
+        typedef std::unique_ptr<BaseConnection> Connection;
+        Connection con;
     public:
+        static const size_t MTU = MAX_TRANSFER_UNIT;
+
         template<class It>
         void PushData(const It& begin, const It& end) {
             std::lock_guard<std::mutex> lock(buf_mtx);
@@ -43,11 +44,11 @@ namespace mplc {
         }
         int OnRead() {
             if(con) return con->Read();
-            else return -1;
+            return -1;
         }
-        template<class TCon>
-        void SetConnection(sockaddr_in nsi) {
-            con = (BaseConnection*)new TCon(*this, nsi);
+        //template<class TCon>
+        void SetConnection(BaseConnection* new_con) {
+            con.reset(new_con);//(BaseConnection*)new TCon(*this, nsi);
         }
         bool hasData() const { return !buf.empty(); }
         SOCKET raw() const { return sock_fd; }
@@ -97,8 +98,8 @@ namespace mplc {
             if(isValid()) { ec = CloseSock(sock_fd); }
             sock_fd = 0;
             if(con) {
-                con->Disconnect();
-                delete con;
+                con->OnDisconnect();
+                con.release();
             }
             return ec;
         }
@@ -115,7 +116,7 @@ namespace mplc {
         }
 
         int Send(const void* resp, int len) {
-            int limit = 1440;
+            int limit = MTU;
             int n = 0;
             const char* ptr = (const char*)resp;
             while((n = send(sock_fd, ptr, std::min(limit, len), 0)) > 0) {

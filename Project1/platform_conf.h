@@ -12,6 +12,18 @@
 #    define PLATFORM PLATFORM_UNIX
 #endif
 
+#ifndef MPLC_WS_API
+#    if PLATFORM == PLATFORM_WINDOWS
+#        ifdef MPLC_WS_API_EXPORTS
+#            define MPLC_WS_API __declspec(dllexport)
+#        else
+#            define MPLC_WS_API __declspec(dllimport)
+#        endif
+#    else
+#        define MPLC_WS_API
+#    endif
+#endif
+
 #if PLATFORM == PLATFORM_WINDOWS
 #    define _WINSOCK_DEPRECATED_NO_WARNINGS 1
 #    if defined(WINCE)
@@ -36,6 +48,7 @@
 #    include <fcntl.h>
 typedef int SOCKET;
 #endif
+#include <cstdint>
 
 typedef int error_code;
 namespace mplc {
@@ -75,8 +88,7 @@ namespace mplc {
         return closesocket(sock);
 #else
 #    if defined(SHUT_RDWR)
-        if(shutdown(sock, SHUT_RDWR) == -1)
-            return GetLastSockError();
+        if(shutdown(sock, SHUT_RDWR) == -1) return GetLastSockError();
 #    endif
         if(close(sock) == -1) return GetLastSockError();
         return 0;
@@ -90,12 +102,22 @@ namespace mplc {
             CR;
         }
         flags = flags | O_NONBLOCK;
-        if(fcntl(sock, F_SETFL, flags) == -1)
-            return GetLastSockError();
+        if(fcntl(sock, F_SETFL, flags) == -1) return GetLastSockError();
         return 0;
 #else
         u_long on_sock = 1;
         return ioctlsocket(sock, FIONBIO, &on_sock);
 #endif
     }
+
+
 }  // namespace mplc
+
+
+#include <mutex>
+
+namespace mplc {
+    using std::mutex;
+    using std::thread;
+    using std::lock_guard;
+}

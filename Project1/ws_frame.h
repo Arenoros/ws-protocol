@@ -30,7 +30,7 @@ namespace mplc {
     class TcpSocket;
 
     struct WSFrame {
-        enum TOpcode { Continue = 0x0, Text = 0x1, Binary = 0x2, Ping = 0x9, Pong = 0x10 };
+        enum TOpcode { Continue = 0x0, Text = 0x1, Binary = 0x2, Close = 0x8, Ping = 0x9, Pong = 0x10 };
         WSFrame(uint8_t* buf, int size);
         WSFrame()
             : fin(0), rsv(0), opcode(0), has_mask(0), short_len(0), _mask(0), head_len(0),

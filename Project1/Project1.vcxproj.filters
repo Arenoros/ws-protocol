@@ -50,5 +50,11 @@
     <ClInclude Include="tcp_socket.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="connections_pool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tcp_server.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

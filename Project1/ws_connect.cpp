@@ -1,59 +1,38 @@
 #pragma once
 #include <regex>
-
 #include "ws_connect.h"
 #include "sha1.h"
+
 namespace mplc {
 
-    // void WSConnect::worker() {
-    //    std::string header;
-    //    error_code ec = ReadHttpHeader(header);
-    //    if(ec != 0) return OnError(ec);
-    //    printf("Headers: %s\n", header.c_str());
-
-    //    ParsHeaders(header);
-    //    // std::string resp = GenerateHandshake();
-    //    /*if(sock.Send(resp.c_str(), resp.size()) == -1) return OnError(sock.GetError());
-
-    //    printf("Response: %s\n", resp.c_str());*/
-
-    //    uint8_t buf[MTU];
-    //    WSFrame::TOpcode prev = WSFrame::Continue;
-    //    WSFrame frame(buf, sizeof(buf));
-    //    while(!stop) {
-    //        if(frame.load_from(sock) == -1) {
-    //            OnError(sock.GetError());
-    //            return;
-    //        }
-    //        prev = NewFrame(frame, prev);
-    //    }
-    //}
-
     WSConnect::WSConnect(TcpSocket& sock, sockaddr_in addr)
-        : sock(sock), addr(addr), stop(false), /* th(&WSConnect::worker, this),*/ state(Handshake),
-          ec(0), frame(buf, MTU) {}
+        : prev(WSFrame::Continue), sock(sock), state(Handshake), frame(buf, RECV_LIMIT), addr(addr), ec(0) {}
 
-    void WSConnect::GenerateHandshake() {
-        std::string Key = headers["Sec-WebSocket-Key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+    std::string WSConnect::BaseHandshake() {
+        std::string Key = headers["Sec-WebSocket-Key"]+"258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
         uint8_t hash[20] = {0};
         SHA1::make(Key, hash);
         Key = to_base64(hash);
         // clang-format off
         std::string handshake =
-                headers["HTTP"] + " 101 Web Socket Protocol Handshake\r\n"
-                "Upgrade: WebSocket\r\n"
-                "Connection: Upgrade\r\n"
-                "Sec-WebSocket-Accept: " + Key + "\r\n"
-                "WebSocket-Origin: http://" + headers["Host"] + "\r\n"
-                "WebSocket-Location: ws://" + headers["Host"] + headers["GET"] + "\r\n\r\n";
+            headers["HTTP"]+" 101 Web Socket Protocol Handshake\r\n"
+            "Upgrade: WebSocket\r\n"
+            "Connection: Upgrade\r\n"
+            "Sec-WebSocket-Accept: "+Key+"\r\n"
+            "WebSocket-Origin: http://"+headers["Host"]+"\r\n"
+            "WebSocket-Location: ws://"+headers["Host"]+headers["GET"]+"\r\n";
         // clang-format on
+        return handshake;
+    }
+
+    void WSConnect::SendHandshake() {
+        std::string handshake = BaseHandshake() + "\r\n";
         sock.PushData(handshake.begin(), handshake.end());
     }
 
     void WSConnect::Disconnect() {
-        OnDiconect();
         sock.Close();
-        stop = true;
+        state = Closed;
     }
 
     int WSConnect::Read() {
@@ -62,20 +41,18 @@ namespace mplc {
             OnError(sock.GetError());
             return n;
         }
-        int tmp = 0;
         switch(state) {
         case Handshake:
             OnHttpHeader((char*)buf, n);
             break;
-        case Established: {
+        case Connected: {
             // If 'load' return less then n then buffer contains part of prev frame
             if(frame.load(n) < n) NewPayloadPart();
             // if in buff has more frames read it's all
             if(frame.has_frame()) NewFrame();
         } break;
         case Closed:
-        case Connected:
-            break;
+            return -1;
         }
         return n;
     }
@@ -86,24 +63,14 @@ namespace mplc {
         if((pos = handshake.find("\r\n\r\n", pos)) != std::string::npos) {
             handshake.resize(pos + 2);
             ParsHeaders(handshake);
-            GenerateHandshake();
-            handshake.resize(0);
-            state = Established;
+            SendHandshake();
+            handshake.clear();
+            state = Connected;
+        } else if(handshake.size() > 4 * TcpSocket::MTU) { // Handshake limit
+            sock.Close();
         }
-        if(handshake.size() > 4 * MTU) { sock.Close(); }
     }
-    error_code WSConnect::ReadHttpHeader(std::string& http) {
-        char buf[MTU];
-        int n = 0;
-        while((n = sock.Recv(buf, sizeof(buf))) > 0) {
-            size_t pos = http.size();
-            http.append(buf, n);
-            if(pos > 3) pos -= 4;
-            if(http.find("\r\n\r\n", pos) != std::string::npos) return http.size();
-        }
-        if(n == -1) return sock.GetError();
-        return 0;
-    }
+
     void WSConnect::ParsHeaders(const std::string& header) {
         size_t l_start = 0;
         auto l_end = header.find("\r\n");
@@ -124,16 +91,16 @@ namespace mplc {
             l_end = header.find("\r\n", l_start);
         }
     }
-    void WSConnect::OnPing(WSFrame& frame) { Pong(frame); }
-    void WSConnect::Pong(WSFrame& frame) {
+    void WSConnect::OnPing(WSFrame& frame) { SendPong(frame); }
+    void WSConnect::SendPong(WSFrame& frame) {
         frame.opcode = WSFrame::Pong;
         frame.send_to(sock);
     }
-    void WSConnect::OnPong(WSFrame& frame) {
+    void WSConnect::OnPong(WSFrame& ) {
         // client response on ping, update timer
     }
 
-    void WSConnect::OnDiconect() { printf("OnDiconect: %d\n", ec); }
+    void WSConnect::OnDisconnect() { printf("OnDiconect: %d\n", ec); }
     void WSConnect::OnText(const char* payload, int size, bool fin) { print_text(payload); }
     void WSConnect::OnBinary(const uint8_t* payload, int size, bool fin) {
         print_bin(payload, size);
@@ -159,8 +126,6 @@ namespace mplc {
     void WSConnect::SendPing() const {
         WSFrame frame;
         frame.fin = true;
-        // frame.payload_len = data.size();
-        // frame.payload =
         frame.opcode = WSFrame::Ping;
         frame.send_to(sock);
     }
@@ -169,13 +134,12 @@ namespace mplc {
         switch(prev) {
         case WSFrame::Text:
             OnText((const char*)frame.payload, frame.len, frame.fin);
-            /*text.append((const char*)frame.payload, frame.len);
-            if(text.size() >= frame.payload_len && frame.fin) OnText(text);*/
             break;
         case WSFrame::Binary:
             OnBinary(frame.payload, frame.len, frame.fin);
-            /*std::copy(frame.payload, frame.payload + frame.len, std::back_inserter(binary));
-            if(binary.size() >= frame.payload_len && frame.fin) OnBinary(binary);*/
+            break;
+        case WSFrame::Close:
+            OnClose(frame);
             break;
         case WSFrame::Ping:
             OnPing(frame);
@@ -187,6 +151,11 @@ namespace mplc {
             break;
         }
     }
+    void WSConnect::OnClose(WSFrame& frame) { SendClose(frame); }
+    void WSConnect::SendClose(WSFrame& frame) {
+        frame.send_to(sock);
+        state = Closed;
+    }
 
     void WSConnect::NewFrame() {
         while(frame.has_frame()) {
@@ -195,9 +164,5 @@ namespace mplc {
             NewPayloadPart();
         }
     }
-    WSConnect::~WSConnect() {
-        Disconnect();
-
-        // th.join();
-    }
+    WSConnect::~WSConnect() {}
 }  // namespace mplc

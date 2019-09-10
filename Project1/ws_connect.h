@@ -1,5 +1,4 @@
 #pragma once
-#include <thread>
 #include <string>
 #include <map>
 #include <vector>
@@ -8,56 +7,63 @@
 #include "ws_frame.h"
 #include "tcp_socket.h"
 
-
+#define MPLC_WS_CONNECT_RECV_BUF_SIZE 1024*10
 namespace mplc {
 
-    class WSConnect : BaseConnection {
+    class WSConnect : public BaseConnection {
+        static const size_t RECV_LIMIT = MPLC_WS_CONNECT_RECV_BUF_SIZE;
         friend class WSServer;
-        WSFrame::TOpcode prev = WSFrame::Continue;
+        WSFrame::TOpcode prev;
         TcpSocket& sock;
-        sockaddr_in addr;
-        bool stop;
-        std::thread th;
+
+        // bool stop;
+        // std::thread th;
         std::string handshake;
-        enum Status { Closed, Connected, Handshake, Established };
+        enum Status { Closed, Connected, Handshake };
         Status state;
-        void worker();
-        uint8_t buf[MTU];
-        WSFrame frame;
-        //std::vector<uint8_t> in_buf;
-    protected:
+        // void worker();
+        uint8_t buf[RECV_LIMIT];
         
+        WSFrame frame;
+        // std::vector<uint8_t> in_buf;
+        virtual void NewFrame();
+        virtual void NewPayloadPart();
+
+    protected:
+        struct sockaddr_in addr;
         error_code ec;
         std::map<std::string, std::string> headers;
         std::string text;
         std::vector<uint8_t> binary;
         void OnHttpHeader(char* data, int size);
-        error_code ReadHttpHeader(std::string& http);
-        
+        std::string BaseHandshake();
+        // error_code ReadHttpHeader(std::string& http);
+
     public:
-        const TcpSocket& Socket() const override { return sock; }
+        //const TcpSocket& Socket() const override { return sock; }
         WSConnect(TcpSocket& sock, sockaddr_in addr);
-        int Read() override;
-        //int Write() override;
-        void Disconnect() override;
-        virtual void GenerateHandshake();
+        virtual ~WSConnect();
+
+        virtual int Read() override;
+        virtual void OnDisconnect() override;
+
         virtual void ParsHeaders(const std::string& header);
-        virtual void Pong(WSFrame& frame);
-        virtual void OnDiconect();
         virtual void OnText(const char* payload, int size, bool fin);
         virtual void OnBinary(const uint8_t* payload, int size, bool fin);
         virtual void OnPing(WSFrame& frame);
         virtual void OnPong(WSFrame& frame);
+        virtual void OnClose(WSFrame& frame);
         virtual void OnError(error_code ec);
-        virtual void NewPayloadPart();
-        void SendText(const std::string& data, bool fin) const;
-        void SendBinary(const uint8_t* payload, int size, bool fin) const;
-        void SendPing() const;
-        virtual void NewFrame();
-        virtual ~WSConnect();
+
+        virtual void SendHandshake();
+        virtual void Disconnect();
+        virtual void SendText(const std::string& data, bool fin = true) const;
+        virtual void SendBinary(const uint8_t* payload, int size, bool fin = true) const;
+        virtual void SendPing() const;
+        virtual void SendPong(WSFrame& frame);
+        virtual void SendClose(WSFrame& frame);
+
     };
 
-    class WSStream {
-        
-    };
+    class WSStream {};
 }  // namespace mplc

@@ -31,7 +31,7 @@ namespace mplc {
             buf.insert(buf.end(), begin, end);
         }
         int PushData(const uint8_t* data, int size) {
-            if(size == 0) return 0;
+            if(size <= 0) return 0;
             std::lock_guard<std::mutex> lock(buf_mtx);
             buf.insert(buf.end(), data, data + size);
             return size;

@@ -59,7 +59,7 @@ namespace mplc {
 
     void WSConnect::OnHttpHeader(char* data, int size) {
         handshake.append(data, size);
-        size_t pos = size + 3 > handshake.size() ? 0 : handshake.size() - size - 3;
+        size_t pos = (size_t)size + 3 > handshake.size() ? 0 : handshake.size() - size - 3;
         if((pos = handshake.find("\r\n\r\n", pos)) != std::string::npos) {
             handshake.resize(pos + 2);
             ParsHeaders(handshake);

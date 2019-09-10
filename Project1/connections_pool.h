@@ -59,6 +59,7 @@ namespace mplc {
                 const SockType& sock = **it;
                 if(sock.raw() > max) max = sock.raw();
             }
+            return max;
         }
         virtual void ReadSockets(const fd_set& rdst) {
             lock_guard<mutex> lock(con_mtx);

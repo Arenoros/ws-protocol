@@ -1,5 +1,4 @@
 #pragma once
-
 #include "platform_conf.h"
 #include "connections_pool.h"
 

@@ -35,19 +35,22 @@ namespace mplc {
         uint8_t meta_buf[2 + sizeof(payload_len) + sizeof(mask)];
         uint8_t* meta = meta_buf;
         uint8_t meta_len = 2;
+        const int size = _buf ? len : (int)payload_len;
         int data_pos = _buf_pos - len;
         const uint8_t* data = _buf ? _buf + data_pos : payload;
-        int size = _buf? len : payload_len;
+        
         if(payload_len > UINT16_MAX) {
             meta_len += sizeof(uint64_t);
         } else if(payload_len > 125) {
             meta_len += sizeof(uint16_t);
         }
         if(has_mask) meta_len += 4;
-        if(data_pos > meta_len) {
+        
+        if(data_pos > meta_len) { 
             data_pos -= meta_len;
             data = meta = _buf + data_pos;
         }
+        // It's OK, if _buf == nullptr then meta is always ptr on meta_buf
         meta[0] |= fin << 7;
         meta[0] |= rsv << 4;
         meta[0] |= opcode;
@@ -73,7 +76,7 @@ namespace mplc {
         _recv_size = size;
         if(pos != payload_len) {
             payload = _buf;
-            len = std::min(payload_len - pos, (uint64_t)size);
+            len = std::min(int(payload_len - pos), size);
             pos += len;
             _buf_pos += len;
             return size - len;
@@ -109,7 +112,7 @@ namespace mplc {
         }
         payload = cur_buf + head_len;
         _buf_pos += head_len;
-        len = std::min<uint64_t>(payload_len, _recv_size - _buf_pos);
+        len = std::min((int)payload_len, _recv_size - _buf_pos);
         _buf_pos += len;
         pos += len;
     }

@@ -16,7 +16,7 @@ inline void print_bin(const std::vector<uint8_t>& data) {
 }
 inline void print_bin(const uint8_t* data, int size) {
     printf("Binary: \n\t");
-    for(size_t i = 0; i < size; ++i) {
+    for(int i = 0; i < size; ++i) {
         printf("0x%02x ", data[i]);
         if(i + 1 % 16 == 0) printf("\n\t");
     }
@@ -30,7 +30,14 @@ namespace mplc {
     class TcpSocket;
 
     struct WSFrame {
-        enum TOpcode { Continue = 0x0, Text = 0x1, Binary = 0x2, Close = 0x8, Ping = 0x9, Pong = 0x10 };
+        enum TOpcode {
+            Continue = 0x0,
+            Text = 0x1,
+            Binary = 0x2,
+            Close = 0x8,
+            Ping = 0x9,
+            Pong = 0x10
+        };
         WSFrame(uint8_t* buf, int size);
         WSFrame()
             : fin(0), rsv(0), opcode(0), has_mask(0), short_len(0), _mask(0), head_len(0),
@@ -57,9 +64,9 @@ namespace mplc {
         };
         //-------
         uint8_t head_len;        // size of frame header
+        int len;                 // Size of payload data in buffer for current frame
         uint64_t payload_len;    // full size payload data
-        uint64_t len,            // Size of payload data in buffer for current frame
-            pos;                 // Position relate of payload data
+        uint64_t pos;            // Position relate of payload data
         const uint8_t* payload;  // pointer to start payload data in buffer for current frame
 
     private:

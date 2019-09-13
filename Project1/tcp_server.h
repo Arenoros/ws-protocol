@@ -19,7 +19,7 @@ namespace mplc {
             sock.Open();
             int val = 1;
             sock.SetOption(SO_REUSEADDR, (char*)&val, sizeof(int));
-            if(sock.Bind(port, intface)!=0) {
+            if(sock.Bind(port, intface) != 0) {
                 ec = GetLastSockError();
                 return ec;
             }
@@ -28,8 +28,8 @@ namespace mplc {
         }
         void Stop() { stop = true; }
         int Start() {
-            if(status!=WAIT) return -1;
-            if(listen(sock.raw(), 10)!=0) {
+            if(status != WAIT) return -1;
+            if(listen(sock.raw(), 10) != 0) {
                 ec = GetLastSockError();
                 Disconnect();
                 return ec;
@@ -43,8 +43,8 @@ namespace mplc {
                 tv.tv_usec = 0;
                 fd_set rdst;
                 ConnetctionsPool::AddToSet(sock, rdst);
-                SOCKET rv = select(sock.raw()+1, &rdst, nullptr, nullptr, &tv);
-                if(rv==0) continue;
+                SOCKET rv = select(sock.raw() + 1, &rdst, nullptr, nullptr, &tv);
+                if(rv == 0) continue;
                 if(!IsValidSock(rv)) {
                     ec = GetLastSockError();
                     Disconnect();
@@ -68,8 +68,8 @@ namespace mplc {
             struct sockaddr_in nsi;
             int nsi_sz = sizeof(nsi);
             SOCKET ns = accept(sock.raw(), (struct sockaddr*)(&nsi), &nsi_sz);
-            if(ns!=0&&IsValidSock(ns)&&GetLastSockError()!=EAGAIN) {
-                if(pool.size()<pool.MAX_CONNECTIONS)
+            if(ns != 0 && IsValidSock(ns) && GetLastSockError() != EAGAIN) {
+                if(pool.size() < pool.MAX_CONNECTIONS)
                     OnConnected(pool.Add(ns), nsi);
                 else
                     CloseSock(ns);
@@ -81,4 +81,4 @@ namespace mplc {
         error_code ec;
         StatusType status;
     };
-}
+}  // namespace mplc

@@ -14,22 +14,16 @@ namespace mplc {
         static const size_t RECV_LIMIT = MPLC_WS_CONNECT_RECV_BUF_SIZE;
         friend class WSServer;
         WSFrame::TOpcode prev;
-        TcpSocket& sock;
-
-        // bool stop;
-        // std::thread th;
         std::string handshake;
         enum Status { Closed, Connected, Handshake };
         Status state;
-        // void worker();
         uint8_t buf[RECV_LIMIT];
-        
         WSFrame frame;
-        // std::vector<uint8_t> in_buf;
         virtual void NewFrame();
         virtual void NewPayloadPart();
 
     protected:
+        TcpSocket& sock;
         struct sockaddr_in addr;
         error_code ec;
         std::map<std::string, std::string> headers;

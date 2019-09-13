@@ -9,16 +9,18 @@ namespace mplc {
         WSServer(uint16_t port, const char* ip = nullptr);
     };
 
-
     inline std::list<std::string> messages;
     struct UserConn : WSConnect {
         UserConn(TcpSocket& sock, sockaddr_in& addr): WSConnect(sock, addr) {}
-        void NewPayloadPart() override {}
         void OnText(const char* payload, int size, bool fin) override {
             printf("new message from: %s\n", inet_ntoa(addr.sin_addr));
             print_text(payload);
             messages.push_back(payload);
             for(auto& msg: messages) { SendText(msg); }
+        }
+        void SendHandshake() override {
+            std::string handshake = BaseHandshake()+"\r\n";
+            sock.PushData(handshake.begin(), handshake.end());
         }
     };
     class Chat : public WSServer {

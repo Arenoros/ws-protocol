@@ -15,6 +15,7 @@ accompanying LICENSE file.
 
 #include "sha1.h"
 #include <cstdint>
+#include <string>
 #include <Winsock2.h>
 
 namespace mplc {

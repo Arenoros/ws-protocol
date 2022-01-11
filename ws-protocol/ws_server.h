@@ -9,8 +9,8 @@ namespace mplc {
         WSServer(uint16_t port, const char* ip = nullptr);
     };
 
-    inline std::list<std::string> messages;
     struct UserConn : WSConnect {
+        std::list<std::string> messages;
         UserConn(TcpSocket& sock, sockaddr_in& addr): WSConnect(sock, addr) {}
         void OnText(const char* payload, int size, bool fin) override {
             printf("new message from: %s\n", inet_ntoa(addr.sin_addr));
@@ -19,7 +19,7 @@ namespace mplc {
             for(auto& msg: messages) { SendText(msg); }
         }
         void SendHandshake() override {
-            std::string handshake = BaseHandshake()+"\r\n";
+            std::string handshake = BaseHandshake() + "\r\n";
             sock.PushData(handshake.begin(), handshake.end());
         }
     };
@@ -27,7 +27,7 @@ namespace mplc {
     public:
         void OnConnected(TcpSocket& connect, sockaddr_in nsi) override {
             printf("new user: %s\n", inet_ntoa(nsi.sin_addr));
-            connect.SetConnection(new UserConn(connect,nsi));
+            connect.SetConnection(new UserConn(connect, nsi));
         }
         Chat(uint16_t port, const char* ip = nullptr): WSServer(port, ip) {}
     };

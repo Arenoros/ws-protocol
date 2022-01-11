@@ -11,6 +11,7 @@ accompanying LICENSE file.
 #define SHA1_HEADER
 #include <cstdint>
 #include <array>
+#include <string>
 
 namespace mplc {
 
